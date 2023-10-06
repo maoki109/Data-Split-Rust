@@ -9,43 +9,14 @@ fn main() {
     let training_ratio = &args[1];
     let file_path = &args[2];
 
-    print_type_of(&file_path);
-
     println!("{} is how much we want in the training set, rest in validation set. ", training_ratio);
     println!("From the directory {}", file_path);
 
-    let image_path = fs::read_dir(file_path.to_string()+"/images");
-    let label_path = fs::read_dir(file_path.to_string()+"/labels");
+    // Put image and label file names into vectors
+    let image_vector = file_vector(file_path, "images");
+    let label_vector = file_vector(file_path, "labels");
 
-    let mut image_vector: Vec<String> = Vec::new();
-    let mut label_vector: Vec<String> = Vec::new();
-
-    if let Ok(files) = image_path {
-        for file in files {
-            if let Ok(file) = file {
-                let image_file = file.path().file_name().unwrap().to_str().unwrap().to_string();
-                // let file_name = file.path().file_stem().unwrap().to_str().unwrap().to_string();
-                image_vector.push(image_file);
-                // println!("{}", image_file);
-                // println!("{}", file_name);
-            }
-        }
-    }
-    image_vector.sort();
-    println!("Image Vector: {:?}", image_vector);
-
-    if let Ok(files) = label_path {
-        for file in files {
-            if let Ok(file) = file {
-                let label_file = file.path().file_name().unwrap().to_str().unwrap().to_string();
-                // let file_name = file.path().file_stem().unwrap().to_str().unwrap().to_string();
-                label_vector.push(label_file);
-            }
-        }
-    }
-    label_vector.sort();
-    println!("Label Vector: {:?}", label_vector);
-
+    // Split image and label vectors based on ratio needed for training set
     let len = image_vector.len();
     let mut vec: Vec<usize> = (0..len).collect();
     vec.shuffle(&mut thread_rng());
@@ -81,6 +52,26 @@ fn main() {
     // }
 
     // Copy validation image and label filesinto new directories
+}
+
+fn file_vector(root_path: &str, file_type: &str) -> Vec<String> {
+    let this_path = fs::read_dir(root_path.to_string()+"/"+file_type);
+    let mut this_vector: Vec<String> = Vec::new();
+
+    if let Ok(files) = this_path {
+        for file in files {
+            if let Ok(file) = file {
+                let this_file = file.path().file_name().unwrap().to_str().unwrap().to_string();
+                // let file_name = file.path().file_stem().unwrap().to_str().unwrap().to_string();
+                this_vector.push(this_file);
+                // println!("{}", image_file);
+                // println!("{}", file_name);
+            }
+        }
+    }
+    this_vector.sort();
+    println!("This Vector: {:?}", this_vector);
+    this_vector
 }
 
 fn new_directory(split_type: &str, file_path: &str) {
