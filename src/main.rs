@@ -2,6 +2,7 @@ use std::{env,fs};
 use std::path::Path;
 use rand::thread_rng;
 use rand::seq::SliceRandom;
+use std::io::{stdin,stdout,Write};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -20,38 +21,21 @@ fn main() {
     let len = image_vector.len();
     let mut vec: Vec<usize> = (0..len).collect();
     vec.shuffle(&mut thread_rng());
-    println!("Vec 1: {:?}", vec);
+    // println!("Vec 1: {:?}", vec);
 
     let ratio: f32 = training_ratio.parse().unwrap();
     let split = ((len as f32) * ratio) as usize;
-    println!("{}", split);
+    // println!("{}", split);
 
     let split_ind: Vec<&[usize]> = vec.chunks(split).collect();
-    println!("Split indices: {:?}", split_ind);
-    println!("image indices: {:?}", split_ind[0]);
-    println!("label indices: {:?}", split_ind[1]);
+    // println!("Split indices: {:?}", split_ind);
+    // println!("image indices: {:?}", split_ind[0]);
+    // println!("label indices: {:?}", split_ind[1]);
 
-    // Creating new train and validation directory
-    new_directory("train", file_path);
-    new_directory("val", file_path);
+    // New train and validation directories
+    new_directory("train", file_path, image_vector.clone(), label_vector.clone(), split_ind.clone());
+    new_directory("val", file_path, image_vector.clone(), label_vector.clone(), split_ind.clone());
 
-    // Copy training image and label files into new directories
-    // for n in split_ind[0] {
-    //     // println!("{:?}", image_vector[*n]);
-    //     // let img_name = format!("/images/{:?}", image_vector[*n]);
-    //     // let label_name = format!("/labels/{:?}", label_vector[*n]);
-    //     let img_name = "/images/".to_owned()+&image_vector[*n];
-    //     let label_name = "/labels/".to_owned()+&label_vector[*n];
-    //     let old_image_path = file_path.to_string()+&img_name;
-    //     let old_label_path = file_path.to_string()+&label_name;
-    //     // let testname = new_train_image_path.clone()+&image_vector[*n];
-    //     println!("Old image path: {:?}", old_image_path);
-    //     println!("New image path: {:?}", new_train_image_path.clone()+&image_vector[*n]);
-    //     fs::copy(old_image_path, new_train_image_path.clone()+&image_vector[*n]);
-    //     fs::copy(old_label_path, new_train_label_path.clone()+&label_vector[*n]);
-    // }
-
-    // Copy validation image and label filesinto new directories
 }
 
 fn file_vector(root_path: &str, file_type: &str) -> Vec<String> {
@@ -62,36 +46,71 @@ fn file_vector(root_path: &str, file_type: &str) -> Vec<String> {
         for file in files {
             if let Ok(file) = file {
                 let this_file = file.path().file_name().unwrap().to_str().unwrap().to_string();
-                // let file_name = file.path().file_stem().unwrap().to_str().unwrap().to_string();
                 this_vector.push(this_file);
-                // println!("{}", image_file);
-                // println!("{}", file_name);
             }
         }
     }
+
     this_vector.sort();
-    println!("This Vector: {:?}", this_vector);
+    // println!("This Vector: {:?}", this_vector);
     this_vector
 }
 
-fn new_directory(split_type: &str, file_path: &str) {
-    // println!("Split type: {:?}", split_type);
-    // println!("File type: {:?}", file_type);
+fn new_directory(split_type: &str, file_path: &str, img_vec: Vec<String>, lbl_vec: Vec<String>, split_vec: Vec<&[usize]>) {
     let file_types = ["images", "labels"];
-
+    let mut i = 0;
+    let mut this_vector: Vec<String> = Vec::new();
+    match split_type == "train" {
+        true => i = 0,
+        false => i = 1,
+    }
     for file_type in file_types {
+        match file_type == "images" {
+            true => this_vector = img_vec.clone(),
+            false => this_vector = lbl_vec.clone(),
+        }
         let new_path = file_path.strip_suffix("train").unwrap().to_string()+"new_"+&split_type+"/"+&file_type+"/";
         match Path::new(&new_path).try_exists() {
             Ok(false) => {
                 fs::create_dir_all(new_path.clone());
                 println!("New directory created at {:?}", new_path);
+                for n in split_vec[i] {
+                    let new_name = "/".to_owned()+file_type+"/"+&this_vector[*n];
+                    let old_path = file_path.to_string()+&new_name;
+                    // println!("Old image path: {:?}", old_path);
+                    // println!("New image path: {:?}", new_path.clone()+&this_vector[*n]);
+                    fs::copy(old_path, new_path.clone()+&this_vector[*n]);
+                }
             },
-            Ok(true) => println!("Directory already exists"),
-            Err(_) => println!("Error!"),
+            Ok(true) => {
+                println!("Directory already exists.");
+                let mut s = String::new();
+                println!("By continuing, the following directory will be overwritten: {:?}", new_path);
+                print!("Do you wish to continue? [y/n]: ");
+                let _ = stdout().flush();
+                stdin().read_line(&mut s).expect("Did not enter correct string");
+                if let Some('\n')=s.chars().next_back() {
+                    s.pop();
+                }
+                if let Some('\r')=s.chars().next_back() {
+                    s.pop();
+                }
+                if s.contains("y") {
+                    fs::remove_dir_all(new_path.clone());
+                    fs::create_dir_all(new_path.clone());
+                    for n in split_vec[i] {
+                        let new_name = "/".to_owned()+file_type+"/"+&this_vector[*n];
+                        let old_path = file_path.to_string()+&new_name;
+                        // println!("Old image path: {:?}", old_path);
+                        // println!("New image path: {:?}", new_path.clone()+&this_vector[*n]);
+                        fs::copy(old_path, new_path.clone()+&this_vector[*n]);
+                    }
+                    println!("Directory rewritten: {:?}", new_path);
+                } else {
+                    println!("Operation canceled.");
+                }
+            },
+            Err(_) => println!("Uh oh! Error!"),
         }
     }
-}
-
-fn print_type_of<T>(_: &T) {
-    println!("{}", std::any::type_name::<T>())
 }
