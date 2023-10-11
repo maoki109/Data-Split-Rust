@@ -10,8 +10,8 @@ fn main() {
     let training_ratio = &args[1];
     let file_path = &args[2];
 
-    println!("{} is how much we want in the training set, rest in validation set. ", training_ratio);
-    println!("From the directory {}", file_path);
+    let split_path = file_path.split('/');
+    let folder_name = split_path.last().unwrap();
 
     // Put image and label file names into vectors
     let image_vector = file_vector(file_path, "images");
@@ -21,20 +21,19 @@ fn main() {
     let len = image_vector.len();
     let mut vec: Vec<usize> = (0..len).collect();
     vec.shuffle(&mut thread_rng());
-    // println!("Vec 1: {:?}", vec);
 
     let ratio: f32 = training_ratio.parse().unwrap();
     let split = ((len as f32) * ratio) as usize;
     // println!("{}", split);
 
     let split_ind: Vec<&[usize]> = vec.chunks(split).collect();
-    // println!("Split indices: {:?}", split_ind);
-    // println!("image indices: {:?}", split_ind[0]);
-    // println!("label indices: {:?}", split_ind[1]);
+
+    println!("{} instances will be in the training set, rest in validation set. ", split);
+    println!("From the directory {}", file_path);
 
     // New train and validation directories
-    new_directory("train", file_path, image_vector.clone(), label_vector.clone(), split_ind.clone());
-    new_directory("val", file_path, image_vector.clone(), label_vector.clone(), split_ind.clone());
+    new_directory("train", file_path, folder_name, image_vector.clone(), label_vector.clone(), split_ind.clone());
+    new_directory("val", file_path, folder_name, image_vector.clone(), label_vector.clone(), split_ind.clone());
 
 }
 
@@ -52,11 +51,10 @@ fn file_vector(root_path: &str, file_type: &str) -> Vec<String> {
     }
 
     this_vector.sort();
-    // println!("This Vector: {:?}", this_vector);
     this_vector
 }
 
-fn new_directory(split_type: &str, file_path: &str, img_vec: Vec<String>, lbl_vec: Vec<String>, split_vec: Vec<&[usize]>) {
+fn new_directory(split_type: &str, file_path: &str, folder_name: &str, img_vec: Vec<String>, lbl_vec: Vec<String>, split_vec: Vec<&[usize]>) {
     let file_types = ["images", "labels"];
     let mut i = 0;
     let mut this_vector: Vec<String> = Vec::new();
@@ -69,7 +67,7 @@ fn new_directory(split_type: &str, file_path: &str, img_vec: Vec<String>, lbl_ve
             true => this_vector = img_vec.clone(),
             false => this_vector = lbl_vec.clone(),
         }
-        let new_path = file_path.strip_suffix("train").unwrap().to_string()+"new_"+&split_type+"/"+&file_type+"/";
+        let new_path = file_path.strip_suffix(folder_name).unwrap().to_string()+"new_"+&split_type+"/"+&file_type+"/";
         match Path::new(&new_path).try_exists() {
             Ok(false) => {
                 fs::create_dir_all(new_path.clone());
@@ -77,8 +75,6 @@ fn new_directory(split_type: &str, file_path: &str, img_vec: Vec<String>, lbl_ve
                 for n in split_vec[i] {
                     let new_name = "/".to_owned()+file_type+"/"+&this_vector[*n];
                     let old_path = file_path.to_string()+&new_name;
-                    // println!("Old image path: {:?}", old_path);
-                    // println!("New image path: {:?}", new_path.clone()+&this_vector[*n]);
                     fs::copy(old_path, new_path.clone()+&this_vector[*n]);
                 }
             },
@@ -101,8 +97,6 @@ fn new_directory(split_type: &str, file_path: &str, img_vec: Vec<String>, lbl_ve
                     for n in split_vec[i] {
                         let new_name = "/".to_owned()+file_type+"/"+&this_vector[*n];
                         let old_path = file_path.to_string()+&new_name;
-                        // println!("Old image path: {:?}", old_path);
-                        // println!("New image path: {:?}", new_path.clone()+&this_vector[*n]);
                         fs::copy(old_path, new_path.clone()+&this_vector[*n]);
                     }
                     println!("Directory rewritten: {:?}", new_path);
