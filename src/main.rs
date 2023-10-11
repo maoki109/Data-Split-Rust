@@ -56,8 +56,9 @@ fn file_vector(root_path: &str, file_type: &str) -> Vec<String> {
 
 fn new_directory(split_type: &str, file_path: &str, folder_name: &str, img_vec: Vec<String>, lbl_vec: Vec<String>, split_vec: Vec<&[usize]>) {
     let file_types = ["images", "labels"];
-    let mut i = 0;
-    let mut this_vector: Vec<String> = Vec::new();
+    let i;
+    // let mut this_vector: Vec<String> = Vec::new();
+    let mut this_vector: Vec<String>;
     match split_type == "train" {
         true => i = 0,
         false => i = 1,
@@ -70,12 +71,12 @@ fn new_directory(split_type: &str, file_path: &str, folder_name: &str, img_vec: 
         let new_path = file_path.strip_suffix(folder_name).unwrap().to_string()+"new_"+&split_type+"/"+&file_type+"/";
         match Path::new(&new_path).try_exists() {
             Ok(false) => {
-                fs::create_dir_all(new_path.clone());
+                fs::create_dir_all(new_path.clone()).ok();
                 println!("New directory created at {:?}", new_path);
                 for n in split_vec[i] {
                     let new_name = "/".to_owned()+file_type+"/"+&this_vector[*n];
                     let old_path = file_path.to_string()+&new_name;
-                    fs::copy(old_path, new_path.clone()+&this_vector[*n]);
+                    fs::copy(old_path, new_path.clone()+&this_vector[*n]).ok();
                 }
             },
             Ok(true) => {
@@ -92,12 +93,12 @@ fn new_directory(split_type: &str, file_path: &str, folder_name: &str, img_vec: 
                     s.pop();
                 }
                 if s.contains("y") {
-                    fs::remove_dir_all(new_path.clone());
-                    fs::create_dir_all(new_path.clone());
+                    fs::remove_dir_all(new_path.clone()).ok();
+                    fs::create_dir_all(new_path.clone()).ok();
                     for n in split_vec[i] {
                         let new_name = "/".to_owned()+file_type+"/"+&this_vector[*n];
                         let old_path = file_path.to_string()+&new_name;
-                        fs::copy(old_path, new_path.clone()+&this_vector[*n]);
+                        fs::copy(old_path, new_path.clone()+&this_vector[*n]).ok();
                     }
                     println!("Directory rewritten: {:?}", new_path);
                 } else {
